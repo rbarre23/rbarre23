@@ -1,0 +1,393 @@
+---
+title: "R Learner's Permit Exam"
+author: "Andrew J. Greenlee, Ph.D."
+date: "2/19/2021"
+output:
+  html_notebook:
+    toc: yes
+---
+
+# Introduction
+Over the course of the first few weeks of our class, you have learned some basic elements of the R programming language and RStudio IDE. As we move forward with our class, we will continue to add knowledge of new packages, tools, and data within R.
+
+This R Learner's Permit is designed to assess your knowledge of the core elements of the R language and software that we have focused on so far in class.
+
+## Instructions
+
+Please follow the instructions contained in this R Notebook, which involve filling in code and generating output. Most instructions ask you to add or fill in code chunks. Others ask you to provide a written interpretation in the notebook portion of the document.
+
+Complete as many items as you can. If you run into trouble completing an item, add comments to your code or in the notebook describing where you are running into problems, and what you think the next step might be to solving the problem you're having.
+
+Complete as many items as you can and then upload your R Notebook to the "R Learners Permit" folder in your assignment repository on GitHub.
+
+## The Data
+
+In the "data" subfolder of this project, you will find one .rds file called NYC_Violations.rds. This is the data you will use to earn your learner's permit. These are "real world" data derived from two sources:
+
+1. New York City [housing maintainance code violation](https://data.cityofnewyork.us/Housing-Development/Housing-Maintenance-Code-Violations/wvxf-dwi5) data for the years 2009 to 2019
+2. Data on property characteristics from the [Primary Land Use Tax Lot Output (PLUTO)](https://www1.nyc.gov/site/planning/data-maps/open-data/dwn-pluto-mappluto.page) database
+
+I have merged selected columns from these datasets for you (you will find data documentation and metadata for both datasets in the documentation subfolder), and after taking a close look at the dataset and the documentation, you should be able to identify which portions of the data you will work with come from each dataset.
+
+The PLUTO data contains information on each [tax lot](http://gis.nyc.gov/taxmap/map.htm) within the city of New York. By merging these data which contain characteristics of buildings and land with the building code violation data, the data you have to work with describes the characteristics of the building and property where the violation occurred as well as the nature of the violation. It is essential for you to spend the time to think carefully about what each row in the building code violation data represents.
+
+# Earn Your Learner's Permit
+
+With that background in mind, its time to earn your learner's permit.
+
+## Task 1: Load and Describe the Data
+
+At the beginning of the script, we will create a holding area within which you can load any packages you may need to work with as you year your R Learner's Permit (if you are not using any packages, please leave this area blank):
+```{r, echo=FALSE}
+# Your Code Here
+install.packages("tidyverse")
+library(tidyverse)
+```
+
+Use the `readRDS()` command to load the data into an object with the name of your choice.
+```{r}
+# Your Code Here
+NYC_Violations <- readRDS("~/R Learner's Permit/data/NYC_Violations.rds")
+```
+
+Describe the structure of the data, including the number of rows and columns in the data. Create a table outside of the code chunk below in your notebook that describes each variable name and what each row in the data represents (a [Markdown table generator](https://www.tablesgenerator.com/markdown_tables) may be useful):
+```{r}
+# Your Code Here
+view(NYC_Violations)
+#31 total Columns (data descirbing the data)
+# 4,483,422 rows (numerical data)
+```
+
+**Your Narrative Description of the Data Structure:**
+| Violation   ID        | Violation identifier            | Unique identifier of Violation                                                                                                                                                                                                                                                                                                                                                                                                       |
+|-----------------------|---------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| Building ID           | Building identifier             | Unique identifier of building                                                                                                                                                                                                                                                                                                                                                                                                        |
+| Registration ID       | Registration identifier         | Unique identifier of valid   registration information                                                                                                                                                                                                                                                                                                                                                                                |
+| BoroID                | Borough identifier              | Borough code                                                                                                                                                                                                                                                                                                                                                                                                                         |
+| Borough               |                                 | The borough where the building   is located                                                                                                                                                                                                                                                                                                                                                                                          |
+| House Number          |                                 | The street number in the   building's address. E.g.: the house number is '100' in '100 Gold Street'                                                                                                                                                                                                                                                                                                                                  |
+| LowHouseNumber        |                                 | If there is a range for a   building, the lowest house number in the building’s address.                                                                                                                                                                                                                                                                                                                                             |
+| HighHouseNumber       |                                 | If there is a range for a   building, the highest house number in the building’s address.                                                                                                                                                                                                                                                                                                                                            |
+| StreetName            |                                 | The name of the street in the   building's address. E.g.: the street name is 'Gold Street' in '100 Gold   Street'                                                                                                                                                                                                                                                                                                                    |
+| StreetCode            |                                 |                                                                                                                                                                                                                                                                                                                                                                                                                                      |
+| Postcode              |                                 | The postcode where the building   is located                                                                                                                                                                                                                                                                                                                                                                                         |
+| Apartment             |                                 | Apartment in violation, if   applicable                                                                                                                                                                                                                                                                                                                                                                                              |
+| Story                 |                                 | Floor of violation                                                                                                                                                                                                                                                                                                                                                                                                                   |
+| Block                 |                                 | Tax block for building                                                                                                                                                                                                                                                                                                                                                                                                               |
+| Lot                   |                                 | Tax lot for building                                                                                                                                                                                                                                                                                                                                                                                                                 |
+| Class                 |                                 | Indicator of seriousness of the   violations, where A is the least serious and C is the most serious. Class I   violation are informational notices that do not have certification periods   associated; they indicate something about the status of the property: that an   Order is open against the property (example: Order to Repair/Vacate Order) or   that a property is vacant or that a property is not validly registered. |
+| InspectionDate        |                                 | Date when the violation was   observed                                                                                                                                                                                                                                                                                                                                                                                               |
+| ApprovedDate          |                                 | Date when the violation was   approved                                                                                                                                                                                                                                                                                                                                                                                               |
+| OriginalCertifyByDate |                                 | Original date by which the owner   was to inform HPD that the violation was corrected                                                                                                                                                                                                                                                                                                                                                |
+| OriginalCorrectByDate |                                 | Original date by which the owner   was to correct the violation                                                                                                                                                                                                                                                                                                                                                                      |
+| NewCertifyByDate      |                                 | If a postponement is granted, a   new certify by date is established                                                                                                                                                                                                                                                                                                                                                                 |
+| NewCorrectByDate      |                                 | If a postponement is granted, a   new correct by date is established                                                                                                                                                                                                                                                                                                                                                                 |
+| CertifiedDate         |                                 | Date when the violation was   certified by the owner                                                                                                                                                                                                                                                                                                                                                                                 |
+| OrderNumber           |                                 | Reference to the abstract   description of the violation condition which cites a specific section of the   law which is in violation                                                                                                                                                                                                                                                                                                 |
+| NOVID                 | Notice of Violation identifier  | Unique identifier of the Notice   of Violation sent to the owner                                                                                                                                                                                                                                                                                                                                                                     |
+| NOVDescription        | Notice of Violation description | Description of the violation                                                                                                                                                                                                                                                                                                                                                                                                         |
+| NOVIssueDate          | Notice of Violation issue date  | Date when the NOV was sent                                                                                                                                                                                                                                                                                                                                                                                                           |
+| CurrentStatusID       |                                 | Unique identifier affiliated   with the current violation status                                                                                                                                                                                                                                                                                                                                                                     |
+| CurrentStatus         |                                 | Current violation status                                                                                                                                                                                                                                                                                                                                                                                                             |
+| CurrentStatusDate     |                                 | Date when the current status   went into effect                                                                                                                                                                                                                                                                                                                                                                                      |
+| NovType               | Notice of Violation type        | Original/Reissued Notice of   Violation.                                                                                                                                                                                                                                                                                                                                                                                             |
+| ViolationStatus       |                                 | Status of Violation                                                                                                                                                                                                                                                                                                                                                                                                                  |
+| Latitude              |                                 | Latitude and longitude   specify the location of the property on the earth's surface. The coordinates   provided are an estimate of the location based on the street segment and   address range.                                                                                                                                                                                                                                    |
+| Longitude             |                                 |                                                                                                                                                                                                                                                                                                                                                                                                                                      |
+| CommunityBoard        |                                 | Community Board indicates the   New York City Community District where the building is located                                                                                                                                                                                                                                                                                                                                       |
+| CouncilDistrict       |                                 | Council District indicates the   New York City Council District where the building is located                                                                                                                                                                                                                                                                                                                                        |
+| CensusTract           |                                 | Census Tract indicates the 2010   U.S. Census Tract where the building is located.                                                                                                                                                                                                                                                                                                                                                   |
+| BIN                   | Building Identification Number  | The BIN (Building Identification   Number) is a unique identifier for each building in the City.                                                                                                                                                                                                                                                                                                                                     |
+| BBL                   | Borough Block Lot               | BBL is a unique identifier for   each tax lot in the city.                                                                                                                                                                                                                                                                                                                                                                           |
+| NTA                   | Neighborhood tabulation area    | Neighborhood Tabulation Area   indicates the New York City Neighborhood Tabulation Area where the building   is located.                                                                                                                                                                                                                                                                                                             |
+
+***
+## Task 2: Summarize Violations
+
+Describe the number of unique violations for each year (information on the year the unit was inspected for violations is contained in the InspectionYear variable):
+```{r}
+# Your Code Here(
+NYC_Violations%>% group_by(InspectionYear)%>%
+  summarize(violations = n())
+
+
+
+```
+
+Now, build upon your summary code to make a plot (geometry of your choice) of inspections by year:
+```{r}
+
+ggplot(data= NYC_Violations, aes(x= InspectionYear,))+ 
+  geom_bar(fill = "blue")+
+  labs(title= "Number of Violations per Year", x = "Inspection Year", y = "Number of Violations")+
+  theme_dark()  
+
+```
+
+In your own words, what is the overall trend with regards to the number of violations issued between 2009 and 2019?:
+
+**Your Narrative Description:**
+# the number of violations increases every yearlinearly
+
+Next, describe the number of unique violations for each New York City borough. Do this using both *base* r code and using `dplyr` code that utilizes the `summarise()` function:
+```{r}
+# Your Code Here
+NYC_Violations%>% group_by(Borough)%>%
+  summarize(violations = n())
+
+table(NYC_Violations$Borough)
+
+
+
+```
+***
+## Task 3: More Detail on Violations
+
+Let's create some more detailed summaries of violations. 
+
+Create a table that enumerates by borough the number of violations that are currently closed or open (ViolationStatus). Remove the `NA` values so that you are just reporting open and closed cases:
+```{r}
+# Your Code Here
+table(NYC_Violations$ViolationStatus)
+
+NYC_Violations%>%
+  filter(!is.na(ViolationStatus))%>%
+  group_by(Borough)%>%
+  summarize(violations= n())
+  
+
+
+```
+See if you can refine the formatting of this table. Although we haven't formally introduced `pivot_wider()` yet, try using it so that you produce a summary in which there are three columns - the borough, the number of closed cases, and the number of open cases (remember you can search for documentation, e.g. `?pivot_wider()`). You will need to supply pivot_wider with an argument for `names_from` and an argument for `values_from`. Names should come from the Violation Status column, and values should come from the column in which the count of violations is contained.
+```{r}
+# Your Code Here
+?pivot_wider
+#table(NYC_Violations$ViolationStatus)
+
+#NYC_Violations%>%
+  filter(!is.na(ViolationStatus))%>%
+    group_by(Borough)%>%
+    summarize(ViolationStatus)
+
+#NYC_Violations%>%group_by(Borough)%>%
+  summarize(ViolationStatus)
+  
+#NYC_Violations%>%
+  filter(!is.na(ViolationStatus))%>%
+  group_by(Borough)%>%
+  summarize(violations= n())%>%
+  pivot_wider(c(ViolationStatus,Borough))
+
+
+NYC_Violations%>% pivot_wider(c(ViolationStatus, Borough, ))
+
+NYC_Violations%>% group_by(Borough, InspectionYear)%>%
+  filter(ViolationStatus== "Open")%>%
+  summarize(count = n())
+
+# Im not sure I understand the logic behind the pivot_wider function, however, I understand what I have to do. Row 183 and below is the closests I could get 
+```
+Now create a chart (geom of your choice) that represents the number of *open cases* by borough by the year in which the violation occurred:
+```{r}
+NYC_Violations%>% 
+  group_by(Borough,InspectionYear)%>%
+  filter(ViolationStatus=="Open")%>%
+  summarise(count= n ())%>%
+  ggplot(aes(x= InspectionYear, y = count))+
+  geom_col()+
+   labs(title= "Number of Open Cases by Borough", x = "Inspection Year", y = "violations")+
+  theme_dark() +
+  facet_wrap(~Borough, scales = "free")
+  
+
+```
+
+Now, create a table with the total number of *buildings* with violations (remember, there may be multiple violations per building in the data). Remember that the BBL column contains a unique identification number for each building (technically it's each tax lot, but we'll use that as a proxy for building). You can use the `distinct()` command to create a subset of the distinct buildings with violations. You could also use the `summarise()` command to accomplish something similar...
+
+```{r}
+?distinct
+
+
+NYC_Violations%>%
+  group_by(BBL)%>%
+  summarize(count=n())
+
+
+```
+
+Let's create a final summary table of buildings with violations and total violations by borough. Use `dplyr` [join syntax](https://dplyr.tidyverse.org/reference/join.html) to accomplish this. Your table should have a column containing the borough name, a column containing the total number of buildings with violations, and a column containing the total number of violations.
+```{r}
+# Your Work Here
+#buildings Table
+Buildings <-NYC_Violations%>% 
+  group_by(BBL)%>%
+  summarize(violations=n())
+
+#Borough Table
+Boroughs<- NYC_Violations%>%
+  group_by(Borough)%>%
+  summarize(Violations = n())
+ 
+
+full_join(Boroughs,Buildings, by = character(), copy = FALSE, Suffix = c(".Boroughs", ".Buildings"))
+  
+  
+# I think I am missing a step to ensure that the number of violations dont repeat and to simplify
+
+```
+
+Finally, add to this table, the average violations per building by borough. You can use the `mutate()` command to add this column to your existing table.
+
+```{r}
+# Your Work Here
+#again, I need to figure out how to separate variables to be able to get individual averages versus average in total
+full_join(Buildings, Boroughs, by = character (), copy = FALSE, Suffix = c(".Buildings", ".Boroughs"))%>%
+  mutate(average = mean(violations))
+  
+```
+Which boroughs contain higher rates of violations per building?
+
+**Your Narrative Description on Violations by Borough:**
+
+***
+
+## Task 4: Building Ages
+
+Create a table that displays the mean and median ages (yearbuilt) of buildings with violations by borough. Remember that individual buildings may have multiple observations - you will need to figure out how to create a summary of the dataset that includes one record per building to generate an unbiased summary.
+```{r}
+# Your Code Here
+NYC_Violations%>% 
+  distinct(BBL, Borough, yearbuilt)%>%
+  mutate(Age= 2021- yearbuilt)%>%
+   group_by(Borough)%>%
+  summarize(age = mean(yearbuilt, na.rm = TRUE))
+ NYC_Violations%>% 
+  group_by(BBL, Borough) %>%
+  summarise(Age = mean(yearbuilt, na.rm=TRUE)) %>% 
+  group_by (Borough) %>% 
+  summarise(N=n(), Building_MeanAge = mean(Age, na.rm=TRUE), Building_MedianAge = median(Age, na.rm=TRUE))
+
+ 
+# I need more practice with distinct function
+        
+
+```
+
+Add to the table that you just made two columns that include the ages of the oldest and youngest buildings for each borough (since the years are numeric, the functions `min()` and `max()` may be useful here):
+```{r}
+# Your Code Here
+
+ NYC_Violations%>% 
+  group_by(BBL,Borough) %>%
+  summarise(Age = mean(yearbuilt, na.rm=TRUE)) %>% 
+  group_by(Borough) %>% 
+  summarise(N=n(), Building_MeanAge = mean(Age, na.rm=TRUE), Building_MedianAge = median(Age, na.rm=TRUE),oldest = min(Age,na.rm = TRUE), youngest = max(Age, na.rm= TRUE))
+
+
+
+```
+
+What do you discover when trying to do this, and how might you modify your code to rectify it?
+
+**Your Narrative Description of this Table and code to address your discovery:**
+
+```{r}
+# Your Code here
+# get rid of variables that consider 0 as the oldest because it doesnt quite make sense historically for a building
+# remember that does not equal is ( ! = )
+NYC_Violations%>% 
+  group_by(BBL,Borough) %>%
+  summarise(Age = mean(yearbuilt, na.rm=TRUE)) %>% 
+  group_by(Borough) %>% 
+  filter(Age != 0)%>%
+  summarise(N=n(), Building_MeanAge = mean(Age, na.rm=TRUE), Building_MedianAge = median(Age, na.rm=TRUE),oldest = min(Age,na.rm = TRUE), youngest = max(Age, na.rm= TRUE))
+
+
+```
+
+**Your Narrative Description of the implications of any modifications you made between the last two code chunks:**
+
+***
+## Task 5: Decade Comparison
+Thinking about each borough, create a table that would allow us to compare the frequency of violations in 2009 with the frequency of violations in 2019. 
+
+```{r}
+# Your Code Here
+NYC_Violations%>%
+  filter(InspectionYear %in% c(2009, 2019))%>%
+  group_by(Borough, InspectionYear)%>%
+  summarize(violations n())
+
+```
+
+How has the frequency of violations changed over the decade?
+**Your Narrative Description:**
+
+***
+
+## Task 6: Frequency of Violations by Violation Type
+
+The OrderNumber column contains information on the actual violation recorded (the housing maintenance code violation user guide contains a narrative description of each order number).
+
+What is the most frequent code violation recorded in each borough?
+```{r}
+# Your Code Here
+NYC_Violations%>%
+  group_by(OrderNumber)
+
+
+```
+
+**Your Narrative Description:**
+
+***
+## Task 7: Building Owners with the Most Violations
+
+Which identifiable owner (ownername) has the highest rate of violations per unit?
+```{r}
+# Your Code Here
+?desc()
+NYC_Violations%>% 
+  group_by(ownername)%>%
+  summarize(violations = n())
+
+
+```
+
+**Your Narrative Description:**
+
+***
+## Task 8: Buildings in Historic Districts
+
+For each Borough, how many violations occur in *buildings* built after 1957 which are located in historic districts (histdist)?
+
+```{r}
+# Your Code Here
+NYC_Violations%>%
+  group_by(distinct (BBL, Borough))%>%
+  filter( InspectionYear = 1957 + n())%>%
+  summarize(histdist)
+```
+
+Add to this table the average assessed value of the land (assessland), the average assessed value of the buildings, and the average total assessed value.
+
+```{r}
+# Your Code Here
+NYC_Violations%>%
+  group_by(distinct (BBL, Borough))%>%
+  filter( InspectionYear = 1957 + n())%>%
+  summarize(N= n(), histdist, na.rm = TRUE), Average_Value = mean(asseland, na.rm = TRUE), AverageTOT = mean(assestot, na.rm = TRUE))
+```
+
+For those buildings in historic districts, how different are the ratios of the assessed values for land and buildings in each borough? What is your interpretation of these differences?
+
+```{r}
+# Your Code Here
+#I keep running into the same problem because I dont know how to use the picvot_wide function (assuming that I will need it here)
+
+```
+**Your Narrative Description:**
+
+***
+# The End
+That's it - you're done! Your permit will be assessed and returned shortly. Please submit your R notebook to the appropriate GitHub folder. Rename the notebook so that the name is lastname_firstname_Permit.Rmd (e.g. Greenlee_Andrew_Permit.Rmd). You just need to upload the .Rmd file - no need to include the whole file structure.
