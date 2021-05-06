@@ -1,0 +1,870 @@
+---
+title: "Citizenship and Grentrification in Chicago"
+author: "Rosario Barrera, UP494 Final Project"
+date: "Spring 2021"
+output: html_notebook
+---
+
+
+```{r message=FALSE, warning=FALSE, paged.print=FALSE}
+library(censusapi)
+library(tidycensus)
+library(tidyverse)
+library(sf)
+library(tigris)
+```
+## Context and Background
+
+Gentrification is a highly contested issue that can manifest both positively and negatively. Gentrification can be defined as the following : a process of neighborhood change that includes economic change in a historically disinvested neighborhood —by means of real estate investment and new higher-income residents moving in - as well as demographic change - not only in terms of income level, but also in terms of changes in the education level or racial make-up of residents (urbandisplacement.org).   This  research will focus on analyzing gentrification at the census tract level in the city of Chicago to infer which communities are being gentrified. The research will analyze the relationship between citizenship and displacement in gentrifying neighborhoods across the city of Chicago.
+
+## Purpose 
+For the purpose of this research citizenship status is taken into consideration as non-citizens are significantly disadvantaged in their communities and vulnerable to displacement associated with gentrification. Non-citizens have many obstacles preventing them from being able to accumulate wealth and generational wealth which can prevent them from having the ability to remain situated in gentrifying neighborhoods as they become more expensive. Non-citizens are unable to qualify for mortgages that would otherwise allow them to buy a home and create generational wealth in their communities. For the purposes of inability to buy homes, non-citizens may be more likely to be renters which will make them more vulnerable to affordability concerns due to rent increases. Considering that renters may be more vulnerable than homeowners to increasing rent values, they may no longer be able to live in the gentrifying community; thus, being displaced and forced to move into a more affordable home or neighborhood, which may not necessarily have all the resources they once had.  
+
+## Methods and Approach
+
+I will be using the Vorhees Index created in 2013  to measure neighborhood Change. It will allow me to plot how neighborhoods across Chicago have changed over time in terms of socioeconomic status. The purpose of using the Vorhees index will help us analyze the rate of neighborhood change in tracts throughout Chicago, specifically in tracts that have a high rate of non-citizens. Using the Vorhees Index and adding citizenship status as a measure will allow this research to determine whether Neighborhood change occurs in neighborhoods of high citizenship rates. 
+
+Independent variable: (based  on Vorhees Index of Neighborhood  change) population, percent white, percent Black, percent Latino, percent elderly, percent children, percent college educated, percent median family income, percent owner occupied, percent families below poverty, percent manager occupations, percent female households with children, percent private school attendance, *citizenship status*
+
+Dependent Variables: Chicago Census Tracts
+
+## Data Sources
+
+Data for this study comes from the 2010 Decennial Census and the 2019 five Year American Community Survey. 
+
+
+## Data Description
+
+Using the index developed by Natalie Vorhees to measure neighborhood change I need to pull 13 different variables in addition to the citizenship variable from the 2010 decennial census and the 2019 five year American community survey. The variables identified by Vorhees are associated with gentrification and neighborhood change. 
+
+Once the Vorhees data is pulled I will have to calculate composite index scores assigned to each census tracts. First I will calculate the city average for each variable in the data set and converted into a percentage. Once I have calculated these measures at the city level I will calculate the average for these variables at the census tract level and then convert them into percentages.
+
+Once these variables are converted, I will assign composite score. A positive score (+1) is  assigned if the variables is associated with gentrifying characteristics such as a higher percentage of college educated individuals than the city average. A negative composite score (-1) is assigned if the variable is associated with declining neighborhood characteristics such as a high percentage of families living below poverty. These composite scores are then calculated at the census tract level. Once composite scores are calculated they will be converted and visualized into a map showing the gentrifying neighborhoods are those with composite scores of 4 points or higher, declining neighborhoods are -4 points of lower, and neighborhoods experiencing no change are those between -4 and 4 points.
+
+For my own research analysis I will be looking at the variables of  Citizenship as an addition to determine if they are underlying factors associated with gentrification or decline. Separate maps from the community typologies will be created to visualize the census tracts with a low percentage of citizens distribution across the the city of Chicago. This will only serve as a visual representation. To determine if there is a correlation between citizenship and gentrifying neighborhoods I will use a  regression function. If there a correlation there will be a strong positive line of regression.  
+
+Before showing the final composite scores and regression, I will provide maps to visualize how the different variables are distributed across the city individually, This will allow us to see if there are any general spatial relationships across the city. 
+
+```{r message=FALSE, warning=FALSE, paged.print=FALSE}
+Chi_Race2019 <- get_acs(geography = "place", state = "IL", table = "B02001", year = 2019, survey = "acs5", output = "wide")%>%
+  rename(pop_tot = B02001_001E, pop_white = B02001_002E, pop_black = B02001_003E)%>% 
+  select(NAME, pop_tot, pop_white, pop_black, GEOID)
+
+Chi_Race2019 <- Chi_Race2019 %>%
+  mutate(percent_white = (pop_white/pop_tot)*100,
+         percent_black = (pop_black/ pop_tot)* 100)
+         
+Chi_Race2019<- Chi_Race2019%>%
+  filter(NAME== "Chicago city, Illinois")
+
+Chi_Race2019<- Chi_Race2019%>%
+  select(NAME, percent_white, percent_black, GEOID)
+```
+
+
+```{r message=FALSE, warning=FALSE, paged.print=FALSE}
+CA_Race2019 <- get_acs(geography = "tract", state = "IL", county = "Cook", table = "B02001", year = 2019, survey = "acs5", output = "wide")%>%
+  rename(pop_tot = B02001_001E, pop_white = B02001_002E, pop_black = B02001_003E)%>% 
+  select(NAME, pop_tot, pop_white, pop_black, GEOID)
+CA_Race2019 <- CA_Race2019 %>%
+  mutate(percent_white = (pop_white/pop_tot)*100,
+         percent_black = (pop_black/ pop_tot)* 100)
+CA_Race2019<- CA_Race2019%>%
+  select(NAME, percent_white, percent_black, GEOID)
+```
+
+
+
+```{r message=FALSE, warning=FALSE, paged.print=FALSE}
+Chi_Ethnicity2019 <- get_acs(geography = "place", state = "IL",variables = c("B03002_001", "B03002_012"),
+                             year = 2019, survey = "acs5", output = "wide")%>%
+  mutate (percent_latino = (B03002_012E / B03002_001E)*100)%>%
+  select (NAME, percent_latino)
+Chi_Ethnicity2019<- Chi_Ethnicity2019%>% 
+  filter(NAME== "Chicago city, Illinois")
+```
+
+```{r message=FALSE, warning=FALSE, paged.print=FALSE}
+CA_Ethnicity_2019 <- get_acs(geography = "tract", state = "IL",county = "Cook",
+                             variables = c("B03002_001", "B03002_012"),
+                             year = 2019, survey = "acs5", output = "wide")%>%
+  mutate (percent_latino = (B03002_012E / B03002_001E)*100)%>%
+  select (percent_latino,NAME, GEOID)
+```
+
+
+```{r message=FALSE, warning=FALSE, paged.print=FALSE}
+Chi_HHIncome_2019 <-get_acs(geography = "place", state = "IL", table = "B19013", year = 2019, survey = "acs5", output = "wide")%>%
+  rename(Chi_Median_Household_Income = B19013_001E)%>%
+  select(NAME, Chi_Median_Household_Income)
+Chi_HHIncome_2019<- Chi_HHIncome_2019%>%
+  filter(NAME== "Chicago city, Illinois")
+```
+
+
+```{r message=FALSE, warning=FALSE, paged.print=FALSE}
+CA_HHIncome_2019 <-get_acs(geography = "tract", state = "IL",county = "Cook",
+                           table = "B19013", year = 2019, survey = "acs5", output = "wide")%>%
+  rename(CA_Median_Household_Income = B19013_001E)%>%
+  select(CA_Median_Household_Income, NAME, GEOID)
+```
+
+
+
+
+```{r message=FALSE, warning=FALSE, paged.print=FALSE}
+Chi_FemaleHousehold2019 <- get_acs(geography = "place", state = "IL", table = "B11001", year = 2019, survey = "acs5", output = "wide")%>%
+  rename(Chi_fem_household = B11001_006E, Total_households = B11001_001E)%>%
+  select( NAME, Chi_fem_household, Total_households)
+  
+
+Chi_FemaleHousehold2019<- Chi_FemaleHousehold2019%>% 
+  filter(NAME== "Chicago city, Illinois")
+
+Chi_FemaleHousehold2019<- Chi_FemaleHousehold2019%>% 
+  mutate(Chi_Percent_FHouseholds = (Chi_fem_household/Total_households)*100)
+
+Chi_FemaleHousehold2019<- Chi_FemaleHousehold2019%>%
+  select(NAME, Chi_Percent_FHouseholds)
+```
+
+```{r message=FALSE, warning=FALSE, paged.print=FALSE}
+CA_FHH_2019 <- get_acs(geography = "tract", state = "IL", county = "Cook",
+                       table = "B11001", year = 2019, survey = "acs5", output = "wide")%>%
+   rename(CA_Female_Head_Household = B11001_006E, Total_households = B11001_001E)%>%
+  select( NAME, CA_Female_Head_Household, Total_households, GEOID)
+CA_FHH_2019<- CA_FHH_2019%>%
+  mutate(Percent_female_households = (CA_Female_Head_Household/ Total_households)*100)
+
+CA_FHH_2019<- CA_FHH_2019%>%
+  select(Percent_female_households, NAME, GEOID)
+```
+
+
+```{r message=FALSE, warning=FALSE, paged.print=FALSE}
+Chi_MedianHomeVal2019 <- get_acs( geography = "place", state = "IL", table = "B25077", year = 2019, survey = "acs5", output = "wide")%>%
+  rename(Chi_Median_Home_Value = B25077_001E)%>%
+  select (NAME, Chi_Median_Home_Value)
+Chi_MedianHomeVal2019<- Chi_MedianHomeVal2019%>% 
+  filter(NAME== "Chicago city, Illinois")
+```
+
+
+
+```{r message=FALSE, warning=FALSE, paged.print=FALSE}
+CA_HomeVal_2019 <- get_acs( geography = "tract", state = "IL", county = "Cook",
+                            table = "B25077", year = 2019, survey = "acs5", output = "wide")%>%
+  rename(CA_Median_Home_Value = B25077_001E)%>%
+  select (NAME, CA_Median_Home_Value, GEOID)
+```
+
+
+```{r message=FALSE, warning=FALSE, paged.print=FALSE}
+Chi_Poverty2019 <- get_acs (geography = "place", state = "IL", table = "S1702", year = 2019, survey = "acs5", output = "wide")%>%
+  rename (Chi_Families_in_Poverty = S1702_C01_044E, Total_Families= S1702_C01_001E)%>%
+  select(NAME, Chi_Families_in_Poverty, Total_Families)
+
+Chi_Poverty2019<- Chi_Poverty2019 %>%
+  filter(NAME== "Chicago city, Illinois")
+
+Chi_Poverty2019<- Chi_Poverty2019%>%
+  mutate(Chi_percent_poverty = (Chi_Families_in_Poverty/ Total_Families)*100)
+
+Chi_Poverty2019<- Chi_Poverty2019%>%
+  select(NAME, Chi_percent_poverty)
+```
+
+
+
+```{r message=FALSE, warning=FALSE, paged.print=FALSE}
+CA_poverty_19 <- get_acs (geography = "tract", state = "IL", county = "Cook",
+                          table = "S1702", year = 2019, survey = "acs5", output = "wide")%>%
+  rename (Families_in_Poverty = S1702_C01_044E,Total_Families= S1702_C01_001E )%>%
+  select(NAME, Families_in_Poverty, Total_Families, GEOID)
+CA_poverty_19<- CA_poverty_19%>%
+  mutate(CA_Poverty= (Families_in_Poverty/ Total_Families)*100)
+
+CA_poverty_19<- CA_poverty_19%>%
+  select(NAME, CA_Poverty, GEOID)
+```
+
+```{r message=FALSE, warning=FALSE, paged.print=FALSE}
+Chi_Housing19<- get_acs(geography = "place", state = "IL", table = "B25003", year = 2019, survey = "acs5", output = "wide")%>%
+  rename(Chi_total_households = B25003_001E, Chi_owner_occupied = B25003_002E, Chi_renter_occupied=B25003_003E ) %>%
+  select(NAME, Chi_owner_occupied, Chi_renter_occupied, Chi_total_households)%>%
+  filter (NAME == "Chicago city, Illinois")
+
+Chi_Housing19<- Chi_Housing19 %>%
+  mutate(Chi_owner_percent = (Chi_owner_occupied/ Chi_total_households)*100)
+
+Chi_Housing19<- Chi_Housing19%>%
+  select(NAME, Chi_owner_percent)
+```
+
+```{r message=FALSE, warning=FALSE, paged.print=FALSE}
+CA_Housing19<- get_acs(geography = "tract", state = "IL", county = "Cook",
+                       table = "B25003", year = 2019, survey = "acs5", output = "wide")%>%
+  rename(CA_total_households = B25003_001E, CA_owner_occupied = B25003_002E, CA_renter_occupied=B25003_003E ) %>%
+  select(NAME, CA_owner_occupied, CA_renter_occupied, CA_total_households, GEOID)
+CA_Housing19<- CA_Housing19 %>%
+  mutate(CA_owner_percent = (CA_owner_occupied/CA_total_households)*100)
+CA_Housing19<- CA_Housing19%>%
+  select(NAME, CA_owner_percent, GEOID)
+```
+
+
+```{r message=FALSE, warning=FALSE, paged.print=FALSE}
+Chi_Children <- get_acs(geography = "place", state = "IL", 
+                   table = "B01001", year = 2019, survey = "acs5", output = "wide")%>%
+  rename(total_pop = B01001_001E, male_5= B01001_003E, male_5_9 = B01001_004E, male_10_14 = B01001_005E, male_15_17 =B01001_006E,
+         female_5= B01001_027E, female_5_9 = B01001_028E, female_10_14= B01001_029E, female_15_17 = B01001_030E)%>%
+  select(NAME, total_pop, male_5,male_5_9, male_10_14,male_15_17, female_5, female_5_9, female_10_14, female_15_17)%>%
+  filter(NAME == "Chicago city, Illinois")
+
+Chi_Children<- Chi_Children%>%
+  mutate(chi_children = male_5+ male_5_9 + male_10_14+ male_15_17+ female_5+ female_5_9+ female_10_14+ female_15_17)
+
+Chi_Children<- Chi_Children%>%
+  mutate(children_percent = (chi_children/ total_pop)*100)%>%
+  select(NAME, children_percent)
+```
+```{r message=FALSE, warning=FALSE, paged.print=FALSE}
+Chi_eldery <- get_acs(geography = "place", state = "IL", 
+                   table = "B01001", year = 2019, survey = "acs5", output = "wide")%>%
+  rename(total_pop = B01001_001E, male_65_66 =B01001_020E, male_67_69= B01001_021E, male_70_74 = B01001_022E, male_75_79 = B01001_023E, male_80_84= B01001_024E, male_85 = B01001_025E, female_64_65 =B01001_044E, female_67_69 = B01001_045E, female_70_74 = B01001_046E, female_75_79 =B01001_047E,
+         female_80_84 =B01001_048E, female_85 = B01001_049E )%>%
+  select(NAME, total_pop, male_65_66, male_67_69, male_70_74, male_75_79, male_80_84, male_85,female_64_65, female_67_69, female_70_74, female_75_79, female_80_84, female_85 )%>%
+  filter(NAME == "Chicago city, Illinois")
+
+Chi_eldery<- Chi_eldery %>%
+  mutate(elderly = male_65_66 + male_67_69+ male_70_74+ male_75_79+ male_80_84+ male_85 + female_64_65 + female_67_69+ female_70_74+ female_75_79+ female_80_84+ female_85)
+
+Chi_eldery<- Chi_eldery%>%
+  mutate(elderly_percent = (elderly/ total_pop)*100)%>%
+  select(NAME, elderly_percent)
+```
+
+```{r message=FALSE, warning=FALSE, paged.print=FALSE}
+CA_Children <- get_acs(geography = "tract", state = "IL", county = "Cook", 
+                   table = "B01001", year = 2019, survey = "acs5", output = "wide")%>%
+  rename(total_pop = B01001_001E, male_5= B01001_003E, male_5_9 = B01001_004E, male_10_14 = B01001_005E, male_15_17 =B01001_006E,
+         female_5= B01001_027E, female_5_9 = B01001_028E, female_10_14= B01001_029E, female_15_17 = B01001_030E)%>%
+  select(NAME, total_pop, male_5,male_5_9, male_10_14,male_15_17, female_5, female_5_9, female_10_14, female_15_17, GEOID)
+
+
+CA_Children<- CA_Children%>%
+  mutate(chi_children = male_5+ male_5_9 + male_10_14+ male_15_17+ female_5+ female_5_9+ female_10_14+ female_15_17)
+
+CA_Children<- CA_Children%>%
+  mutate(CA_children_percent = (chi_children/ total_pop)*100)%>%
+  select(NAME, CA_children_percent, GEOID)
+```
+```{r message=FALSE, warning=FALSE, paged.print=FALSE}
+CA_eldery <- get_acs(geography = "tract", state = "IL", county = "Cook",
+                   table = "B01001", year = 2019, survey = "acs5", output = "wide")%>%
+  rename(total_pop = B01001_001E, male_65_66 =B01001_020E, male_67_69= B01001_021E, male_70_74 = B01001_022E, male_75_79 = B01001_023E, male_80_84= B01001_024E, male_85 = B01001_025E, female_64_65 =B01001_044E, female_67_69 = B01001_045E, female_70_74 = B01001_046E, female_75_79 =B01001_047E,
+         female_80_84 =B01001_048E, female_85 = B01001_049E )%>%
+  select(NAME, total_pop, male_65_66, male_67_69, male_70_74, male_75_79, male_80_84, male_85,female_64_65, female_67_69, female_70_74, female_75_79, female_80_84, female_85, GEOID )
+
+CA_eldery<- CA_eldery %>%
+  mutate(elderly = male_65_66 + male_67_69+ male_70_74+ male_75_79+ male_80_84+ male_85 + female_64_65 + female_67_69+ female_70_74+ female_75_79+ female_80_84+ female_85)
+
+CA_eldery<- CA_eldery%>%
+  mutate(CA_elderly_percent = (elderly/ total_pop)*100)%>%
+  select(NAME, CA_elderly_percent, GEOID)
+```
+
+
+```{r message=FALSE, warning=FALSE, paged.print=FALSE}
+Chi_Bachelors_19 <- get_acs(geography = "place", state = "IL", table = "S1501", year = 2019, survey = "acs5", output = "wide")%>%
+  rename(Chi_bachelors25 = S1501_C01_012E, Chi_Total25=S1501_C01_006E, Chi_total24 =S1501_C01_001E, Chi_bachelors24 = S1501_C01_005E )%>%
+  select(NAME, Chi_bachelors24, Chi_bachelors25, Chi_total24, Chi_Total25)%>%
+    filter (NAME == "Chicago city, Illinois")
+Chi_Bachelors_19<- Chi_Bachelors_19%>%
+  mutate(Chi_bachelors = Chi_bachelors24 + Chi_bachelors25,
+         Chi_total = Chi_total24 + Chi_Total25)
+Chi_Bachelors_19<- Chi_Bachelors_19%>%
+  mutate (Bachelors_percent = (Chi_bachelors / Chi_total)*100)
+
+Chi_Bachelors_19<- Chi_Bachelors_19%>%
+  select(NAME, Bachelors_percent)
+
+```
+
+
+```{r message=FALSE, warning=FALSE, paged.print=FALSE}
+CA_bachelors19 <- get_acs(geography = "tract", state = "IL", county = "Cook",
+                          table = "S1501", year = 2019, survey = "acs5", output = "wide")%>%
+  rename(CA_bachelors25 = S1501_C01_012E, CA_Total25=S1501_C01_006E, CA_total24 =S1501_C01_001E, CA_bachelors24 = S1501_C01_005E)%>%
+  select(NAME,CA_bachelors24, CA_bachelors25, CA_total24, CA_Total25,GEOID)
+CA_bachelors19<- CA_bachelors19 %>%
+  mutate(CA_bachelors = CA_bachelors24 + CA_bachelors25,
+         CA_total = CA_total24 + CA_Total25)
+CA_bachelors19<- CA_bachelors19%>%
+  mutate (CA_Bachelors_percent = (CA_bachelors / CA_total)*100)
+
+CA_bachelors19<- CA_bachelors19%>%
+  select(NAME, CA_Bachelors_percent, GEOID)
+```
+
+
+```{r message=FALSE, warning=FALSE, paged.print=FALSE}
+Private_school19 <- get_acs(geography = "place", state = "IL", table = "B14002", year = 2019, survey = "acs5", output = "wide")%>%
+  rename(total_enrolled =B14002_001E, male_preschool = B14002_006E, male_kinder =  B14002_009E, male_1_4 =B14002_012E, 
+         male_5_8 =B14002_015E, male_9_12 = B14002_018E,
+         female_preschool = B14002_030E, female_kinder =B14002_033E, Female_1_4 = B14002_036E, Female_5_8 =B14002_039E, 
+         female_9_12=B14002_042E )%>%
+  select(NAME, total_enrolled, male_preschool, male_kinder, male_1_4, male_5_8, male_9_12,
+         female_preschool, female_kinder, Female_1_4, Female_5_8, female_9_12)%>%
+    filter (NAME == "Chicago city, Illinois")
+
+ChiPrivate_school2019<- Private_school19%>%
+  mutate(Total_private = (male_preschool+ male_kinder+ male_1_4+ male_5_8+ male_9_12+
+         female_preschool+ female_kinder+ Female_1_4+ Female_5_8+ female_9_12))
+
+ChiPrivate_school2019<- ChiPrivate_school2019%>%
+  mutate(Private_school_percent = (Total_private/ total_enrolled)*100)%>%
+  select(NAME, Private_school_percent)
+```
+
+```{r message=FALSE, warning=FALSE, paged.print=FALSE}
+CA_Private_school19 <- get_acs(geography = "tract", state = "IL", table = "B14002", year = 2019, survey = "acs5", output = "wide")%>%
+  rename(total_enrolled =B14002_001E, male_preschool = B14002_006E, male_kinder =  B14002_009E, male_1_4 =B14002_012E, 
+         male_5_8 =B14002_015E, male_9_12 = B14002_018E,
+         female_preschool = B14002_030E, female_kinder =B14002_033E, Female_1_4 = B14002_036E, Female_5_8 =B14002_039E, 
+         female_9_12=B14002_042E )%>%
+  select(NAME, total_enrolled, male_preschool, male_kinder, male_1_4, male_5_8, male_9_12,
+         female_preschool, female_kinder, Female_1_4, Female_5_8, female_9_12, GEOID)
+
+CA_Private_school19<- CA_Private_school19%>%
+  mutate(Total_private = (male_preschool+ male_kinder+ male_1_4+ male_5_8+ male_9_12+
+         female_preschool+ female_kinder+ Female_1_4+ Female_5_8+ female_9_12))
+CA_Private_school19<- CA_Private_school19%>%
+  mutate(Private_school_percent = (Total_private/ total_enrolled)*100)%>%
+  select(NAME, Private_school_percent, GEOID)
+```
+
+
+```{r message=FALSE, warning=FALSE, paged.print=FALSE}
+Chi_Managment19 <- get_acs(geography = "place", state = "IL", table = "S2402", year = 2019, survey = "acs5", output = "wide")%>%
+  rename(total_employed =S2402_C01_001E, management = S2402_C01_004E)%>%
+  select(NAME, total_employed, management)%>%
+    filter (NAME == "Chicago city, Illinois")
+Chi_Managment19<- Chi_Managment19%>%
+  mutate(management_percent = (management/ total_employed)*100)
+Chi_Managment19<- Chi_Managment19%>%
+  select(NAME, management_percent)
+```
+
+
+```{r message=FALSE, warning=FALSE, paged.print=FALSE}
+CA_Managment19 <- get_acs(geography = "tract", state = "IL", table = "S2402", year = 2019, survey = "acs5", output = "wide")%>%
+  rename(total_employed =S2402_C01_001E, management = S2402_C01_004E)%>%
+  select(total_employed, management, NAME, GEOID)
+
+CA_Managment19<- CA_Managment19%>%
+  mutate(CA_Management_percent = (management / total_employed)*100)
+
+CA_Managment19<- CA_Managment19%>%
+   select(NAME, CA_Management_percent, GEOID)
+```
+
+```{r message=FALSE, warning=FALSE, paged.print=FALSE}
+Chi_Citizenship19 <- get_acs(geography = "place", state = "IL", table = "B05001", year = 2019, survey = "acs5", output = "wide")%>%
+  rename(non_citizen=B05001_006E, total_pop= B05001_001E )%>%
+  select(NAME, non_citizen, total_pop)%>%
+    filter (NAME == "Chicago city, Illinois")
+Chi_Citizenship19<- Chi_Citizenship19%>%
+  mutate(Chi_nonCitizen_percent = (non_citizen/ total_pop)*100)
+
+Chi_Citizenship19<- Chi_Citizenship19%>%
+  select(NAME, Chi_nonCitizen_percent)
+```
+
+
+```{r message=FALSE, warning=FALSE, paged.print=FALSE}
+CA_Citizenship19 <- get_acs(geography = "tract", state = "IL", table = "B05001", year = 2019, survey = "acs5", output = "wide")%>%
+  rename(non_citizen=B05001_006E, total_pop = B05001_001E )%>%
+  select(NAME, non_citizen, total_pop, GEOID)
+CA_Citizenship19<- CA_Citizenship19%>% 
+  mutate(CA_percent_nonCitizen= (non_citizen / total_pop)*100)
+
+CA_Citizenship19<- CA_Citizenship19%>%
+  select(NAME, CA_percent_nonCitizen, GEOID)
+```
+
+```{r message=FALSE, warning=FALSE, paged.print=FALSE}
+Chicago_2019 <- left_join(ChiPrivate_school2019, Chi_Race2019, by = "NAME")
+ 
+```
+
+```{r message=FALSE, warning=FALSE, paged.print=FALSE}
+Chicago_2019<- Chicago_2019%>% 
+  left_join(Chi_Poverty2019,by = "NAME")
+Chicago_2019<- Chicago_2019%>%
+  left_join(Chi_MedianHomeVal2019, "NAME")
+
+```
+
+```{r message=FALSE, warning=FALSE, paged.print=FALSE}
+Chicago_2019<- Chicago_2019%>%
+  left_join(Chi_Managment19,  by = "NAME")
+
+Chicago_2019<- Chicago_2019%>%
+  left_join(Chi_Housing19,by = "NAME")
+```
+
+```{r message=FALSE, warning=FALSE, paged.print=FALSE}
+Chicago_2019<- Chicago_2019%>%
+  left_join(Chi_HHIncome_2019, by = "NAME")
+Chicago_2019<- Chicago_2019%>%
+  left_join( Chi_FemaleHousehold2019,by = "NAME")
+```
+
+```{r message=FALSE, warning=FALSE, paged.print=FALSE}
+Chicago_2019<- Chicago_2019%>%
+  left_join(Chi_Ethnicity2019, by = "NAME")
+Chicago_2019<- Chicago_2019%>%
+  left_join( Chi_Citizenship19, by = "NAME")
+```
+
+```{r message=FALSE, warning=FALSE, paged.print=FALSE}
+Chicago_2019<- Chicago_2019%>%
+  left_join(Chi_Bachelors_19, by = "NAME")
+
+
+
+
+Chicago_2019<- Chicago_2019%>%
+  left_join(Chi_eldery, by = "NAME")
+
+Chicago_2019<-Chicago_2019%>%
+  left_join(Chi_Children, by = "NAME")
+
+```
+
+```{r message=FALSE, warning=FALSE}
+library(data.table)
+Chicago_2019<- Chicago_2019%>%
+  select(percent_white, percent_black, percent_latino, elderly_percent, children_percent, Bachelors_percent, Chi_Median_Household_Income, Chi_owner_percent, Chi_Median_Home_Value, Chi_percent_poverty, management_percent, Chi_Percent_FHouseholds, Private_school_percent)
+
+# options(scipen = 999)
+# t_Chicago <- transpose(Chicago_2019)
+# colnames(t_Chicago)<- rownames(Chicago_2019)
+# rownames(t_Chicago)<- colnames(Chicago_2019)
+# t_Chicago<- t_Chicago%>%
+#   rename( "2019" = 1)
+# t_Chicago$"2019"<- round(t_Chicago$"2019")
+# t_Chicago
+```
+
+```{r message=FALSE, warning=FALSE, paged.print=FALSE}
+CA_2019 <- left_join(CA_bachelors19, CA_Citizenship19, by = "NAME")
+CA_2019 <- CA_2019 %>% left_join(CA_Ethnicity_2019, by = "NAME")
+CA_2019<- CA_2019%>% left_join(CA_FHH_2019, by = "NAME")
+CA_2019<- CA_2019 %>% left_join(CA_HHIncome_2019, by = "NAME")
+CA_2019<- CA_2019 %>% left_join(CA_HomeVal_2019, by = "NAME")
+CA_2019<- CA_2019 %>% left_join(CA_Housing19, by = "NAME")
+CA_2019 <- CA_2019 %>% left_join(CA_Managment19) 
+CA_2019 <- CA_2019 %>% left_join(CA_poverty_19, by = "NAME")
+CA_2019 <- CA_2019 %>% left_join(CA_Private_school19, by = "NAME")
+CA_2019<- CA_2019 %>% left_join(CA_Race2019, by = "NAME")
+CA_2019<- CA_2019%>% left_join(CA_Children, by = "NAME")
+CA_2019 <- CA_2019 %>% left_join(CA_eldery, by = "NAME")
+
+```
+```{r message=FALSE, warning=FALSE, paged.print=FALSE}
+CA_2019 <- subset(CA_2019, select = -c(GEOID.y, GEOID.x.x, GEOID.y.y, GEOID.x.x.x, GEOID.y.y.y, GEOID.x.x.x.x, GEOID.y.y.y.y,
+                     GEOID.x.x.x.x.x, GEOID.y.y.y.y.y, GEOID.x.x.x.x.x.x, GEOID.y.y.y.y.y.y))%>%
+  rename(GEOID = GEOID.x)
+```
+
+# Variable Distribution
+In order to show the general distribution of the variables throughout the city of Chicago, I have created separate maps for each variable. The following map visuals show these distributions by census tract across the City of Chicago.
+```{r message=FALSE, warning=FALSE, paged.print=FALSE}
+il_trt<-tracts(state="IL", class="sf")
+ggplot()+geom_sf(data=il_trt)+ labs(title = "Census Tracts Across Illinois")
+```
+
+
+```{r message=FALSE, warning=FALSE, paged.print=FALSE}
+il_trt<-left_join(il_trt, CA_2019, by="GEOID")
+chi<-il_trt %>% filter(COUNTYFP %in% c("031"))
+
+ggplot()+geom_sf(data=chi)+ 
+  labs(title = "Cook County Census Tracts")
+```
+
+
+```{r message=FALSE, warning=FALSE, paged.print=FALSE}
+chi<-chi %>% filter(!GEOID %in% c("17097990000", "17031990000"))
+
+ggplot()+geom_sf(data=chi)+
+  labs(title = "Chicago Census Tracts" )
+
+```
+
+
+# Adults with Bachelors Degree
+The amount of adults with a Bachelors degree is an indicator of growing or gentrifying census tract according to the Vorhees index. In the Vorhees Index, a tract with a percentage higher than the city average would constitute in a positive score (+1). The justification for this is because it is assumed that those with a Bachelors degree have a higher likelihood of having higher paying jobs, thus, more economic stability. From this map alone it easy to see that there are areas where more than 50 percent of the population holds a Bachelors degree or higher, and other areas where less than 20% of the population have a Bachelors degree. In general, communities in the the North East side of the city have a Bachelors degree. There are also some areas in the far West and South West side where there is a high percentage of the population holding a Bachelors degree. Conversely, on the South East side and West side there is a belt where less than 20% of the population holds a Bachelors Degree. 
+
+```{r}
+ggplot()+geom_sf(data=chi, aes(fill = CA_Bachelors_percent))+
+  labs(title = "Adults with Bachelors Degree Across Chicago (%)",
+       subtitle = "Source: 2019 ACS")+
+  theme_minimal()
+```
+
+
+# Racial and Ethnic Distribution 
+Racial and Ethnic distribution across the city is particularly significant in this index. Looking at distribution can tell about the groups being affected by gentrification, or simply experiencing it. 
+
+## Latino Distribution Across Chicago
+Using this map we can see how Latinos are distributed across the City of Chicago. Some general observations will show that there are three major clusters where Latinos reside. The South West side, the South East side, and the North West side are areas where Latinos generally live. In the Vorhees index, a high rate of Latinos is scored as a negative composite score (-1) due to negative perceptions associated with Latinos. 
+
+```{r}
+ggplot()+geom_sf(data=chi, aes(fill = percent_latino))+
+  labs(title = "Latino Distribution Across Chicago (%)", 
+       subtitle = "Source : 2019 ACS")
+```
+## White Distribution Across Chicago
+Using this map we can see that there is a large distribution of White residents across the city of Chicago. There are areas where less than 25 percent of White residents will not be found. There are less White residents located in the South West side of the city and the South side more generally. According to the Vorhees index, a higher white population is a positive composite scores (+ 1) because of the perceived positive socio-economic status. 
+```{r}
+ggplot()+geom_sf(data=chi, aes(fill = percent_white))+
+  labs(title = " White Population Distribution (%)",
+       subtitle = "Source: 2019 ACS")
+```
+
+## Distribution of Black Residents 
+The following map shows the distribution of Black residents across the city of Chicago. It is evident that the Black population is not evenly distributed across the city. For example, there are many areas where there is close to 0 percent black residents. Areas of black residency are located particularly in the south side of Chicago and in two clusters in the west side of the side. There is a clear distinction of where the Black population is located around the city of Chicago. According to the Vorhees index a high Black population rate is associated with a negative score (-1) due to the perceived negative socio-economic status of the Black population. 
+```{r}
+ggplot()+geom_sf(data=chi, aes(fill = percent_black))+
+  labs(title = " Black Population Distribution (%)",
+       subtitle = "Source: 2019 ACS") 
+```
+
+## Female Head of Household with Children
+Female head of households are represented in the following map. This map shows that there are areas where female households are drawn to living at. They can be drawn or pushed to particular areas due to the availability of low home values, or low rents among other factors. The following map shows that there are some areas in particular where female headed households reside. These areas would be located in the west side of the city as well as the far South side. According to the Vorhees index, high rates of female headed households are  negatively scored (-1) due to the negative perceptions associated with female headed households such as poverty. 
+
+```{r}
+ggplot()+geom_sf(data=chi, aes(fill = Percent_female_households))+
+  labs(title = " Female Head of Household with Children Distribution (%)",
+       subtitle = "Source: 2019 ACS")
+```
+## Median Household Income
+The following map shows the distribution by median household income across the city of Chicago. In general, this map is quite harder to decipher as the different incomes are quite evenly distributed across the city. However, it is evident that there are some tracts in the far South side that have a median household income in the $50,000 range. Conversely, there are tracts in the North East side with higher median household incomes.Higher median household incomes were scored positively (+1) on the Vorhees Index because they indicate more financial and economic stability. 
+```{r}
+ggplot()+geom_sf(data=chi, aes(fill = CA_Median_Household_Income))+ 
+  labs(title = " Median Household Income Distribution ($)",
+       subtitle= "Source: 2019 ACS")
+```
+## Median Home Value
+The following map shows the median homes values across the city of Chicago.Similar to the median household income, the median home value is quite evenly distributed across the city. This finding was quite interesting, however it is possible that there are very high home values and very low home value, thus the median home value is quite skewed due to the outliers. High median homes values were scored in a positive range (+1) according the Vorhees index because it is an indicator community economic stability due to increased property taxes that fund local resources. 
+```{r}
+ggplot()+geom_sf(data=chi, aes(fill = CA_Median_Home_Value))+
+  labs(title= "Median Home Value Distrbution ($)",
+       subtitle = "source: 2019 ACS")
+```
+##  Home Owner Distribution
+The following map shows the percent of home owners per tract across the city of Chicago. Higher rates of home owners are scored positively (+1) according to the Vorhees index because it shows a sense of community economic stability similar to high median home values. Additionally, it shows that home owners desire to live in their own community. The map indicates that there are higher amounts of owners per tract in the outskirts of the city. The city center shows that home owners are less populated in the city center. However, there are areas where a lack of homeowners exists in the far south east side of the city as well as the West side of the city. This makes sense as there are areas closer to the city with more high rises, thus, have higher populations of renters. 
+```{r}
+ggplot()+geom_sf(data=chi, aes(fill = CA_owner_percent))+
+  labs(title = "Home Owner Distribution(%)",
+       subtitle = "Source: 2019 ACS")
+```
+
+## Employees with Management Position
+The following map shows people within the workforce (16 years old +) with a management occupation. This indicator is particularly interesting because management occupations have decreased overall.In general there is a lack of people with management occupations across the city of Chicago. However, there are some clusters where the management occupation is higher than average. These clusters can be seen in the North East side of the city as well as the South West side of the city. According to the Vorhees Index, areas with a high rate of employees with management occupations scored positively (+1) due to percieved economic stability.  
+```{r}
+ggplot()+geom_sf(data=chi, aes(fill = CA_Management_percent))+
+  labs(title = "Employeers with Management Occupation (%)",
+       subtitle = "Source: 2019 ACS")
+```
+## Disitribution of Poverty
+This map shows the distribution of poverty across the city of Chicago. This map is particularly concerning as it shows some areas where more than 50% of the population is living at of below poverty. The clusters with high poverty rates exist primarily in the South side of the. Interesting enough, a lot of these seem to reside with the Latino population, Black Population, and female head of household Population. This is concerning because it shows that particular areas and populations are concentrated with poverty more than others. A high poverty rate was scored negatively (-1) according to the Vorhees Index due to the negative association with poverty such as lack of community investments and amenities. 
+```{r}
+ggplot()+geom_sf(data=chi, aes(fill = CA_Poverty))+
+  labs( title = "Poverty Distribution (%)",
+        subtitle= " source: 2019 ACS")
+```
+## Children Enrolled in Private School K - 12
+The following map shows the percent of children enrolled in private school through the city of Chicago. High rates of children enrolled in private school were score positively(+1) according to the Vorhees index because it shows that families have the ability to invest in private education. In general, the percent of children enrolled in private school is quite low across the city. However, there is one cluster of tracts where there is a higher enrollment of children in private school. This cluster can be found in the south side of the city.  
+```{r}
+ggplot()+geom_sf(data=chi, aes(fill = Private_school_percent))+
+  labs (title = " Children Enrolled in Private School (%)",
+        subtitle = "Source: 2019 ACS")
+```
+## Children distribution 
+The distribution of children across the city can tell us the kind of population living within a particular census tract. A high rate of children is scored negatively (-1) according to the Vorhees index because it shows that there are less adults contributing to the economy in that particular area.The following map shows us where children live across the city. Children are quite evenly distributed across the tracts. However, there is a linear cluster along the lakefront with 10 percent or less of the population being is composed of children. 
+```{r}
+ggplot()+geom_sf(data=chi, aes(fill = CA_children_percent))+
+  labs(title = " Distribution of Children (%)",
+       susbtitle= " source: 2019 ACS")
+```
+## Distribution of the Aging Population
+The following map shows the distribution of the aging population across the city of Chicago. A high rate of an aging population is perceived negatively(-1) through the Vorhees index. The elderly population is quite evenly distributed across the city. However, in the far South West side of the city there is a cluster where 30 percent of more is composed of the aging population. 
+```{r}
+ggplot()+geom_sf(data=chi, aes(fill = CA_elderly_percent))+
+  labs(title = "Distribution of Elderly Population(%)",
+       subtitle = " Source: ACS 2019")
+```
+```{r message=FALSE, warning=FALSE, paged.print=FALSE}
+
+better_table<- chi%>%
+  select(CA_Bachelors_percent,
+         CA_percent_nonCitizen,
+         CA_Median_Household_Income,
+         CA_Median_Home_Value, 
+         CA_owner_percent,
+         CA_Management_percent,
+         CA_Poverty,
+         CA_children_percent,
+         CA_elderly_percent,
+         Private_school_percent,
+         Percent_female_households,
+         percent_black,
+         percent_latino,
+         percent_white)
+better_table <- st_set_geometry(better_table, NULL)
+#better_table <- better_table[-c(41, 442, 995),]
+
+GEOID <- c(chi $ GEOID)
+scores <- rep(0, 1318)
+
+# var_str <- c('CA_Bachelors_percent.x', 'CA_Median_Household_Income.x', 'CA_Median_Home_Value.x', 'CA_owner_percent.x', 'CA_Management_percent.x', 'CA_Poverty.x', 'CA_children_percent.x', 'CA_elderly_percent.x', 'Private_school_percent.x', 'Percent_female_households.x', 'percent_black.x', 'percent_latino.x', 'percent_white.x')
+# 
+# for (j in var_str) {
+#   for (i in 1 : 1318) {
+#     if (is.na(better_table[i, j]) == TRUE) {
+#       scores[i] <- scores[i] + 0
+#     } else if (better_table[i, j] < Chicago_2019 $ Bachelors_percent) {
+#       scores[i] <- scores[i] - 1
+#     } else if (better_table[i, j] > Chicago_2019 $ Bachelors_percent) {
+#       scores[i] <- scores[i] + 1
+#     } else {
+#       scores[i] <- scores[i] + 0
+#     }
+#   }
+# }
+
+for (i in 1 : 1318) {
+  if (is.na(better_table[i, 'CA_Bachelors_percent']) == TRUE) {
+    scores[i] <- scores[i] + 0
+  } else if (better_table[i, 'CA_Bachelors_percent'] < Chicago_2019 $ Bachelors_percent) {
+    scores[i] <- scores[i] - 0
+  } else if (better_table[i, 'CA_Bachelors_percent'] > Chicago_2019 $ Bachelors_percent) {
+    scores[i] <- scores[i] + 1
+  } else {
+    scores[i] <- scores[i] + 0
+  }
+}
+
+for (i in 1 : 1318) {
+  if (is.na(better_table[i, 'CA_Median_Household_Income']) == TRUE) {
+    scores[i] <- scores[i] + 0
+  } else if (better_table[i, 'CA_Median_Household_Income'] < Chicago_2019 $ Chi_Median_Household_Income) {
+    scores[i] <- scores[i] - 0
+  } else if (better_table[i, 'CA_Median_Household_Income'] > Chicago_2019 $ Chi_Median_Household_Income) {
+    scores[i] <- scores[i] + 1
+  } else {
+    scores[i] <- scores[i] + 0
+  }
+}
+
+for (i in 1 : 1318) {
+  if (is.na(better_table[i, 'CA_Median_Home_Value']) == TRUE) {
+    scores[i] <- scores[i] + 0
+  } else if (better_table[i, 'CA_Median_Home_Value'] < Chicago_2019 $ Chi_Median_Home_Value) {
+    scores[i] <- scores[i] - 1
+  } else if (better_table[i, 'CA_Median_Home_Value'] > Chicago_2019 $ Chi_Median_Home_Value ) {
+    scores[i] <- scores[i] + 1
+  } else {
+    scores[i] <- scores[i] + 0
+  }
+}
+
+for (i in 1 : 1318) {
+  if (is.na(better_table[i, 'CA_owner_percent']) == TRUE) {
+    scores[i] <- scores[i] + 0
+  } else if (better_table[i, 'CA_owner_percent'] < Chicago_2019 $ Chi_owner_percent) {
+    scores[i] <- scores[i] - 0
+  } else if (better_table[i, 'CA_owner_percent'] > Chicago_2019 $ Chi_owner_percent) {
+    scores[i] <- scores[i] + 1
+  } else {
+    scores[i] <- scores[i] + 0
+  }
+}
+
+for (i in 1 : 1318) {
+  if (is.na(better_table[i, 'CA_Management_percent']) == TRUE) {
+    scores[i] <- scores[i] + 0
+  } else if (better_table[i, 'CA_Management_percent'] < Chicago_2019 $ management_percent) {
+    scores[i] <- scores[i] - 0
+  } else if (better_table[i, 'CA_Management_percent'] > Chicago_2019 $ management_percent) {
+    scores[i] <- scores[i] + 1
+  } else {
+    scores[i] <- scores[i] + 0
+  }
+}
+
+for (i in 1 : 1318) {
+  if (is.na(better_table[i, 'CA_Poverty']) == TRUE) {
+    scores[i] <- scores[i] + 0
+  } else if (better_table[i, 'CA_Poverty'] < Chicago_2019 $ Chi_percent_poverty) {
+    scores[i] <- scores[i] - 0
+  } else if (better_table[i, 'CA_Poverty'] > Chicago_2019 $ Chi_percent_poverty) {
+    scores[i] <- scores[i] - 1
+  } else {
+    scores[i] <- scores[i] + 0
+  }
+}
+
+for (i in 1 : 1318) {
+  if (is.na(better_table[i, 'CA_children_percent']) == TRUE) {
+    scores[i] <- scores[i] + 0
+  } else if (better_table[i, 'CA_children_percent'] < Chicago_2019 $ children_percent) {
+    scores[i] <- scores[i] - 0
+  } else if (better_table[i, 'CA_children_percent'] > Chicago_2019 $ children_percent) {
+    scores[i] <- scores[i] - 1
+  } else {
+    scores[i] <- scores[i] + 0
+  }
+}
+
+for (i in 1 : 1318) {
+  if (is.na(better_table[i, 'CA_elderly_percent']) == TRUE) {
+    scores[i] <- scores[i] + 0
+  } else if (better_table[i, 'CA_elderly_percent'] < Chicago_2019 $ elderly_percent) {
+    scores[i] <- scores[i] - 0
+  } else if (better_table[i, 'CA_elderly_percent'] > Chicago_2019 $ elderly_percent) {
+    scores[i] <- scores[i] - 1
+  } else {
+    scores[i] <- scores[i] + 0
+  }
+}
+
+for (i in 1 : 1318) {
+  if (is.na(better_table[i, 'Private_school_percent']) == TRUE) {
+    scores[i] <- scores[i] + 0
+  } else if (better_table[i, 'Private_school_percent'] < Chicago_2019 $ Private_school_percent) {
+    scores[i] <- scores[i] - 0
+  } else if (better_table[i, 'Private_school_percent'] > Chicago_2019 $ Private_school_percent) {
+    scores[i] <- scores[i] + 1
+  } else {
+    scores[i] <- scores[i] + 0
+  }
+}
+
+for (i in 1 : 1318) {
+  if (is.na(better_table[i, 'Percent_female_households']) == TRUE) {
+    scores[i] <- scores[i] + 0
+  } else if (better_table[i, 'Percent_female_households'] < Chicago_2019 $ Chi_Percent_FHouseholds) {
+    scores[i] <- scores[i] - 0
+  } else if (better_table[i, 'Percent_female_households'] > Chicago_2019 $ Chi_Percent_FHouseholds) {
+    scores[i] <- scores[i] - 1
+  } else {
+    scores[i] <- scores[i] + 0
+  }
+}
+
+for (i in 1 : 1318) {
+  if (is.na(better_table[i, 'percent_black']) == TRUE) {
+    scores[i] <- scores[i] + 0
+  } else if (better_table[i, 'percent_black'] < Chicago_2019 $ percent_black) {
+    scores[i] <- scores[i] - 0
+  } else if (better_table[i, 'percent_black'] > Chicago_2019 $ percent_black) {
+    scores[i] <- scores[i] - 1
+  } else {
+    scores[i] <- scores[i] + 0
+  }
+}
+
+for (i in 1 : 1318) {
+  if (is.na(better_table[i, 'percent_latino']) == TRUE) {
+    scores[i] <- scores[i] + 0
+  } else if (better_table[i, 'percent_latino'] < Chicago_2019 $ percent_latino) {
+    scores[i] <- scores[i] + 0
+  } else if (better_table[i, 'percent_latino'] > Chicago_2019 $ percent_latino) {
+    scores[i] <- scores[i] - 1
+  } else {
+    scores[i] <- scores[i] + 0
+  }
+}
+
+
+for (i in 1 : 1318) {
+  if (is.na(better_table[i, 'percent_white']) == TRUE) {
+    scores[i] <- scores[i] + 0
+  } else if (better_table[i, 'percent_white'] < Chicago_2019 $ percent_white) {
+    scores[i] <- scores[i] - 0
+  } else if (better_table[i, 'percent_white'] > Chicago_2019 $ percent_white) {
+    scores[i] <- scores[i] + 1
+  } else {
+    scores[i] <- scores[i] + 0
+  }
+}
+
+
+#names(scores) <- name_geo
+
+index_scores <- data.frame(scores, GEOID)
+
+gen_list <- vector(mode = 'list', 1318)
+
+for (i in 1 : 1318) {
+  if (index_scores[i, 'scores'] > 4) {
+    gen_list[i] <- 'Gentrifying'
+  } else if (index_scores[i, 'scores'] < -4) {
+    gen_list[i] <- 'Declining'
+  } else {
+    gen_list[i] <- 'Stable'
+  }
+}
+
+index_scores $ Change_type <- gen_list
+```
+
+## Analysis
+
+On their own, each variable is significant in showing how different populations are distributed across the city of Chicago. Each variable on it own can tell a story and provide information on what the census tract may be lacking, or which population may benefit from a particular resource. 
+ In order to determine whether a census tract was gentrifying I added all the variables to get a composite score. The total would indicate whether the community was gentrifying, declining, staying the same. Variables associated with declining were given a point of -1, and variables associated with gentrification were given a point of +1. These numbers were then added together per tract to determine whether the neighborhood was declining, gentrifying or staying the same. tracts scored 4 or more were considered gentrifying, tracts scored - 4 of more were considered declining, and tracts between 1-4 and 4 were considered stable/ no change.  The following table shows the way in which Chicago Tracts are changing.
+ In general, we can see that areas along the South side of Chicago are declining as well as some areas in the West side of the city. areas in the North East of the city were gentrifying. This is evident close to the communities along the lakefront in the North side. In general, most areas in Chicago such as the South East side are quite stable as they fall between -4 and 4. 
+```{r}
+typology <-left_join(chi, index_scores, by = "GEOID")
+ggplot()+geom_sf(data=typology, aes(fill = scores))+
+  labs(title = "City of Chicago: Tracts by Composite Score",
+       subtitle = "
+       Gentrifying = 4 or more 
+       No Change = between -4 & 4 
+       Declining = -4 or more")
+```
+
+### Citizenship
+The Purpose of this research was to determine whether or not there was a relationship between tracts that are gentrifying and citizenship rates of the community. The following map shows the distribution of  noncitizens across the city. noncitizens are quite evenly distributed across the city of Chicago. However, there are areas with higher non citizen rates such as the south west side of the city. These also happen to be in areas where tracts are quite stable. 
+```{r}
+ggplot()+geom_sf(data=chi, aes(fill = CA_percent_nonCitizen))+
+  labs(title = "NonCitizens Across Chicago(%)",
+       subtitle = "Source: 2019 ACS")
+```
+
+# Regression
+To determine whether there was a direct relationship between tracts experiencing gentrification and high noncitizenship rates, I ran a regression. 
+This regression shows that as typology scores increase, the percent of non citizens decreases. While this does not show us that noncitizens are being pushed out, this shows us that noncitizens are not benefiting from resources of gentrifying neighborhoods. However, this regression does show us that noncitizen are living in tracts that are considered "stable," yet on the trajectory to declining. 
+
+
+```{r}
+ggplot(data=typology, aes(x= CA_percent_nonCitizen, y=scores))+geom_point()+
+  stat_smooth(method="lm")+
+  labs(title = "Relationship between NonCitizen Rates and Typology Score")
+```
+
+# Policy Implications
+ Gentrification can be a detrimental issue for many people's livelihoods. For some, gentrification can be a good thing when it pertain to certain investment within a gentrifying community. However, for some, the gentrifying community may become too expensive, thus displaces people in the process.  Public housing  can be used as a resource to mitigate the effects of gentrification, However, not everyone is qualified to receive public aid or affordable housing Vouchers. Being a noncitizen can make people more vulnerable to displacement caused by gentrification. The 1996 welfare law created two categories for immigrants to determine their eligibility to welfare services. However, the law excluded most people in both groups from welfare programs. 
+The following immigrants are eligible:
+“lawful permanent residents,refugees, people granted asylum or withholding of deportation/ removal and conditional entrants, people granted parole by the U.S Department of Homeland Security or a period of at least one year,Cuban or Haitian entrants, certain abused immigrants, their children, and/or their parents, certain survivors of trafficking.”. Noncitizens do not have access to welfare programs including: SNAP,TANF,Social Security Benefits, Public Housing. 
+While the regression indicated that noncitizens are not living in gentrifying tract, it showed us that they are living in stable communities that on the trajectory to declining. This can inform policy makers on the communities that may be at risk in the future of declining communities. For policy makers as well as housing advocates, this would be a good indicator to show which areas may need additional resources such as housing and public aid to prevent them from declining. Considering that non citizens do not qualify for public aid, it is imperative to change legislation to allow non citizens living in vulnerable declining communities access to resource to prevent them exacerbating decline in particular tracts. 
+
+## Conclusion and Future Research
+In this research, I had the opportunity to see which census tracts were gentrifying,declining, or staying the same. Spatially, the census tracts that were gentrifying were mostly located in the North East side of the city and North West side. In terms of non citizen, it seems that non low rates of non citizens are located in gentrifying tracts. Higher rates of non citizens are located in tracts that are stable, but on a trajectory of decline. This can indicate that these areas where more non citizens reside may need more resources in the future to mitigate the effects of a declining neighborhood. 
+
+In this research I only had the opportunity to look at the year 2019. However, for the future of this work I would like to look into the census year of 2010, and 2000 to see how Chicago has changed over a three decade period. I think that looking at this would help show the ways in which each variable changed over time. Possibly, we will see if gentrifying tracts had higher non citizen rates or higher rates of a particular racial or ethnic groups prior to them becoming gentrified. This would help us which communities were excluded from the gentrifying neighborhoods.  Additionally, for further research I would like to see the agents that facilitate gentrification. For example, I would like to see if there is a correlation between higher mortgage lending practices in particular communities once they are gentrified and determine which groups are more likely to receive mortgages. This will allow us to see whether banks have facilitated the gentrification of particular communities while facilitating the decline of others.
